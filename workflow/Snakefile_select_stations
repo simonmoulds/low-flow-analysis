@@ -1,0 +1,121 @@
+# Main entrypoint of the workflow.
+# Please follow the best practices:
+# https://snakemake.readthedocs.io/en/stable/snakefiles/best_practices.html,
+# in particular regarding the standardized folder structure mentioned there.
+
+
+import shutil
+import pandas as pd
+from pathlib import Path
+
+
+# configfile: "config/config.yaml"
+
+
+rule all:
+    input:
+        'results/selected_stations.csv',
+        # 'results/report.md'
+        # 'results/map.png'
+
+rule select_stations:
+    input: 
+        'data/OHDB/OHDB_metadata/OHDB_metadata.csv'
+    output:
+        'results/selected_stations.csv'
+    conda: 
+        'envs/conda_environment_base.yml'
+    script:
+        'scripts/select-stations.py'
+
+# rule fetch_metadata:
+#     output:
+#         'results/raw/{source}/stations.csv'
+#     script:
+#         "scripts/fetch-metadata.R"
+
+# checkpoint fetch_data:
+#     """Format data according to OHDB conventions."""
+#     input:
+#         'results/raw/{source}/stations.csv',
+#     output:
+#         directory('results/raw/discharge/daily/{source}')
+#     script:
+#         "scripts/fetch-data.R"
+
+# def select_data_input(wildcards):
+#     checkpoint_output = checkpoints.fetch_data.get(**wildcards).output[0]
+#     file_names = expand(
+#         "results/raw/discharge/daily/{source}/{stn}.csv",
+#         source=wildcards.source,
+#         stn=glob_wildcards(os.path.join(checkpoint_output, "{stn}.csv")).stn
+#     )
+#     return file_names
+
+# rule select_data:
+#     """Restrict metadata to stations for which data has been
+#     downloaded.
+#     """
+#     input:
+#         files=select_data_input,
+#         metadata='results/raw/{source}/stations.csv',
+#     output:
+#         'results/OHDB_metadata/original/{source}_metadata.csv'
+#     params:
+#         'results/OHDB_data/discharge/daily'
+#     run:
+#         stns = [Path(f).stem for f in input['files']]
+#         # Copy data to main output file; retrieve start/end date from the file
+#         additional_metadata_list = []
+#         os.makedirs(params[0], exist_ok=True)
+#         for stn in stns:
+#             in_file = os.path.join('results/raw/discharge/daily', wildcards.source, stn + '.csv')
+#             out_file = os.path.join('results/OHDB_data/discharge/daily', stn + '.csv')
+#             # Read data and compute some additional metadata
+#             df = pd.read_csv(in_file, parse_dates=['date'])
+#             start_year = int(df['date'].min().year)
+#             end_year = int(df['date'].max().year)
+#             avail = (1. - df['Q'].isna().sum() / df['Q'].size) * 100.
+#             # Satellite era availability [for Anya]
+#             df_post1983 = df.loc[df['date'].dt.year >= 1983]
+#             if df_post1983.size == 0:
+#                 post1983_avail = 0.
+#             else:
+#                 post1983_avail = (1. - df_post1983['Q'].isna().sum() / df_post1983['Q'].size) * 100.
+
+#             additional_metadata_list.append(
+#                 pd.DataFrame(
+#                     {'ohdb_id': [stn],
+#                      'ohdb_start_year': [start_year],
+#                      'ohdb_end_year': [end_year],
+#                      'ohdb_data_availability': [avail],
+#                      'ohdb_post1983_data_availability': [post1983_avail]
+#                      })
+#             )
+#             shutil.copy(in_file, out_file)
+#         additional_metadata = pd.concat(additional_metadata_list, ignore_index=True)
+#         metadata = pd.read_csv(input['metadata'])
+#         metadata = metadata.loc[metadata['ohdb_id'].isin(stns)]
+#         metadata = pd.merge(metadata, additional_metadata, on='ohdb_id', how='left')
+#         metadata.to_csv(output[0], index=False)
+
+# rule merge_metadata:
+#     input:
+#         files=expand('results/OHDB_metadata/original/{source}_metadata.csv', source=SOURCE)
+#     output:
+#         'results/OHDB_metadata/OHDB_metadata.csv'
+#     script:
+#         'scripts/merge-metadata.R'
+
+# rule plot:
+#     input:
+#         'results/OHDB_metadata/OHDB_metadata.csv'
+#     # output:
+#     #     'results/map.png'
+#     # script:
+#     #     'scripts/plot.R'
+#     output:
+#         # 'results/report.html'
+#         'results/report.md'
+#     script:
+#         'scripts/report.Rmd'

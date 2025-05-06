@@ -1,0 +1,14 @@
+name: conda_environment_base
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - click
+  - pandas
+  - numpy=1.26.4
+  - python=3.12
+  - tqdm
+  - pip
+  - pip:
+    - baseflow
+    - git+https://github.com/simonmoulds/hydrots.git@main

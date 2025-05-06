@@ -1,0 +1,46 @@
+# Main entrypoint of the workflow.
+# Please follow the best practices:
+# https://snakemake.readthedocs.io/en/stable/snakefiles/best_practices.html,
+# in particular regarding the standardized folder structure mentioned there.
+
+import re
+import shutil
+import pandas as pd
+from pathlib import Path
+
+include: 'rules/common.smk'
+
+# configfile: "config/config.yaml"
+# meta = pd.read_csv('results/selected_stations.csv')
+# OHDB_IDS = list(meta[meta['valid_for_trend_analysis']]['ohdb_id'])
+# OHDB_LOW_FLOW_IDS = list(meta[meta['valid_for_trend_analysis'] & ~meta['intermittent']]['ohdb_id'])
+# # OHDB_INTERMITTENT_IDS = list(meta[meta['valid_for_trend_analysis'] & meta['intermittent']]['ohdb_id'])
+# # METRICS = ['mam7d', 'mam14d', 'mam21d', 'mam30d', 'mam60d', 'mam90d', 'mxdu95', 'mxdu90', 'mxdf95', 'mxdf90', 'bfi']
+# METRICS = ['mam7d', 'mxdu95', 'mxdf95', 'bfi']
+
+# wildcard_constraints:
+#     robin_id='|'.join([re.escape(x) for x in ROBIN_IDS])
+
+rule all:
+    input:
+        expand('results/robin_metrics/{robin_id}.csv', robin_id=ROBIN_IDS)
+
+rule process_robin_timeseries: 
+    input: 
+        ROBIN_DATADIR / 'data' / '{robin_id}.csv'
+    output: 
+        'results/robin_processed/{robin_id}.csv'
+    conda:
+        'envs/conda_environment_base.yml'
+    script: 
+        'scripts/process-robin.py'
+
+rule compute_robin_low_flow_metrics:
+    input:
+        'results/robin_processed/{robin_id}.csv'
+    output:
+        'results/robin_metrics/{robin_id}.csv'
+    conda:
+        'envs/conda_environment_base.yml'
+    script: 
+        'scripts/compute-low-flow-metrics.py'
